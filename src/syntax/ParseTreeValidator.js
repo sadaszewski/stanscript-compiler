@@ -16,6 +16,7 @@ import {NewExpression} from '../syntax/trees/ParseTrees';
 import {ParseTreeVisitor} from './ParseTreeVisitor';
 import {TreeWriter} from '../outputgeneration/TreeWriter';
 import {
+  BACK_SLASH,
   AMPERSAND,
   AMPERSAND_EQUAL,
   AND,
@@ -270,6 +271,7 @@ export class ParseTreeValidator extends ParseTreeVisitor {
       case STAR:
       case SLASH:
       case PERCENT:
+      case BACK_SLASH:
         this.check_(tree.left.isAssignmentExpression(), tree.left,
             'assignment expression expected');
         this.check_(tree.right.isAssignmentExpression(), tree.right,

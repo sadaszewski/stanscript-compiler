@@ -27,6 +27,7 @@ import {
 } from '../options';
 
 import {
+  BACK_SLASH,
   AMPERSAND,
   AMPERSAND_EQUAL,
   AND,
@@ -653,6 +654,8 @@ function scanToken() {
   next();
 
   switch (code) {
+    case 92: // \
+      return createToken(BACK_SLASH, beginIndex);
     case 123:  // {
       return createToken(OPEN_CURLY, beginIndex);
     case 125:  // }

@@ -68,6 +68,7 @@ import {
 } from '../options';
 
 import {
+  BACK_SLASH,
   AMPERSAND,
   AMPERSAND_EQUAL,
   AND,
@@ -2754,10 +2755,10 @@ export class Parser {
    */
   parseMultiplicativeExpression_() {
     var start = this.getTreeStartLocation_();
-    var left = this.parseUnaryExpression_();
+    var left = this.parseRangeExpression_();
     while (this.peekMultiplicativeOperator_(this.peekType_())) {
       var operator = this.nextToken_();
-      var right = this.parseUnaryExpression_();
+      var right = this.parseRangeExpression_();
       left = this.newBinaryOperator_(start, left, operator, right);
     }
     return left;
@@ -2777,6 +2778,38 @@ export class Parser {
         return false;
     }
   }
+
+  parseRangeExpression_() {
+      var start = this.getTreeStartLocation_();
+      var left = this.parseUnaryExpression_();
+      var cnt = 0;
+      while (this.peekRangeOperator_(this.peekType_())) {
+        console.log("Here");
+        var operator = this.nextToken_();
+        console.log(operator);
+        operator.type = '\\';
+        var right = this.parseUnaryExpression_();
+        left = this.newBinaryOperator_(start, left, operator, right);
+        cnt++;
+      }
+      if (cnt > 2) {
+        throw Error("Invalid syntax in range expression.");
+      }
+      return left;
+    }
+
+    /**
+     * @return {boolean}
+     * @private
+     */
+    peekRangeOperator_(type) {
+      switch (type) {
+        case BACK_SLASH:
+          return true;
+        default:
+          return false;
+      }
+    }
 
   // 11.4 Unary Operator
   /**

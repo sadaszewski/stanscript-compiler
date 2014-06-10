@@ -120,3 +120,4 @@ export var VOID = 'void';
 export var WHILE = 'while';
 export var WITH = 'with';
 export var YIELD = 'yield';
+export var BACK_SLASH = '\\';
