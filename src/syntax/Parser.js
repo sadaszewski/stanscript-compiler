@@ -42,7 +42,8 @@ import {
   PAREN_EXPRESSION,
   PROPERTY_NAME_ASSIGNMENT,
   REST_PARAMETER,
-  SYNTAX_ERROR_TREE
+  SYNTAX_ERROR_TREE,
+  UNARY_EXPRESSION
 } from './trees/ParseTreeType';
 import {
   AS,
@@ -69,6 +70,7 @@ import {
 
 import {
   BACK_SLASH,
+  CHAINING,
   AMPERSAND,
   AMPERSAND_EQUAL,
   AND,
@@ -547,6 +549,7 @@ export class Parser {
       case CONST:
       case LET:
       case VAR:
+      case BACK_SLASH:
         exportTree = this.parseVariableStatement_();
         break;
       case FUNCTION:
@@ -776,6 +779,7 @@ export class Parser {
           break;
         // Fall through.
       case VAR:
+      case BACK_SLASH:
         return this.parseVariableStatement_();
       case IF:
         return this.parseIfStatement_();
@@ -1080,6 +1084,8 @@ export class Parser {
       case LET:
         if (!parseOptions.blockBinding)
           debugger;
+      case BACK_SLASH:
+        type = 'var';
       case VAR:
         this.nextToken_();
         break;
@@ -2496,6 +2502,12 @@ export class Parser {
             this.transformLeftHandSideExpression_(tree.expression);
         if (expression !== tree.expression)
           return new ParenExpression(tree.location, expression);
+
+      /* case UNARY_EXPRESSION:
+        if (tree.operator.type == '\\') {
+            console.log("HEre!!!!!");
+            return new VariableDeclaration(tree.location, tree.operand, null, )
+        } */
     }
     return tree;
   }
@@ -2516,7 +2528,7 @@ export class Parser {
    */
   parseConditional_(expressionIn) {
     var start = this.getTreeStartLocation_();
-    var condition = this.parseLogicalOR_(expressionIn);
+    var condition = this.parseChainingOperator_(expressionIn);
     if (this.eatIf_(QUESTION)) {
       condition = this.toParenExpression_(condition);
       var left = this.parseAssignmentExpression();
@@ -2531,6 +2543,17 @@ export class Parser {
     left = this.toParenExpression_(left);
     right = this.toParenExpression_(right);
     return new BinaryOperator(this.getTreeLocation_(start), left, operator, right);
+  }
+
+  parseChainingOperator_(expressionIn) {
+    var start = this.getTreeStartLocation_();
+    var left = this.parseLogicalOR_(expressionIn);
+    var operator;
+    while (operator = this.eatOpt_(CHAINING)) {
+      var right = this.parseLogicalOR_(expressionIn);
+      left = this.newBinaryOperator_(start, left, operator, right);
+    }
+    return left;
   }
 
   // 11.11 Logical OR
@@ -2802,14 +2825,14 @@ export class Parser {
      * @return {boolean}
      * @private
      */
-    peekRangeOperator_(type) {
-      switch (type) {
-        case BACK_SLASH:
-          return true;
-        default:
-          return false;
-      }
+  peekRangeOperator_(type) {
+    switch (type) {
+      case BACK_SLASH:
+        return true;
+      default:
+        return false;
     }
+  }
 
   // 11.4 Unary Operator
   /**
@@ -2829,9 +2852,27 @@ export class Parser {
 
     if (this.peekUnaryOperator_(this.peekType_())) {
       var operator = this.nextToken_();
+      if (operator.type == '\\') {
+        console.log("HEre!!!");
+        if (this.peek_('.')) {
+          var operand = this.parseMemberExpression_();
+          return new UnaryExpression(this.getTreeLocation_(start), operator, operand);
+        } else if (this.peek_('\\')) {
+          this.nextToken_();
+          return new ThisExpression(this.getTreeEndLocation_(start));
+        } else if (this.peekIdName_(this.peekToken_())) {
+          // transformLeftHandSideExpression_() will take care of this
+          // console.log("OK");
+          // return this.parseVariableStatement_();
+        } else {
+          throw Error('Invalid syntax of backslash unary operator');
+        }
+      }
       var operand = this.parseUnaryExpression_();
       operand = this.toParenExpression_(operand);
-      return new UnaryExpression(this.getTreeLocation_(start), operator, operand);
+      var ret = new UnaryExpression(this.getTreeLocation_(start), operator, operand);
+      // console.log(ret);
+      return ret;
     }
     return this.parsePostfixExpression_();
   }
@@ -2851,6 +2892,7 @@ export class Parser {
       case MINUS:
       case TILDE:
       case BANG:
+      case BACK_SLASH:
         return true;
       default:
         return false;

@@ -28,6 +28,7 @@ import {
 
 import {
   BACK_SLASH,
+  CHAINING,
   AMPERSAND,
   AMPERSAND_EQUAL,
   AND,
@@ -801,6 +802,9 @@ function scanToken() {
         case 61:  // =
           next();
           return createToken(MINUS_EQUAL, beginIndex);
+        case 62: // >
+          next();
+          return createToken(CHAINING, beginIndex);
         default:
           return createToken(MINUS, beginIndex);
       }

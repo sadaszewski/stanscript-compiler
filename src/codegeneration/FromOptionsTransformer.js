@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {RangeOperatorTransformer} from './RangeOperatorTransformer';
+import {StanGrammarTransformer} from './StanGrammarTransformer';
 import {AmdTransformer} from './AmdTransformer';
 import {AnnotationsTransformer} from './AnnotationsTransformer';
 import {ArrayComprehensionTransformer} from './ArrayComprehensionTransformer';
@@ -163,7 +163,7 @@ export class FromOptionsTransformer extends MultiTransformer {
     if (transformOptions.symbols)
       append(SymbolTransformer);
 
-    append(RangeOperatorTransformer);
+    append(StanGrammarTransformer);
 
     // Issue errors for any unbound variables
     if (options.freeVariableChecker) {

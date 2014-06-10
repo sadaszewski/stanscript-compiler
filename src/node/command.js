@@ -14,7 +14,13 @@
 
 'use strict';
 
+require('../codegeneration/StanGrammarRuntime.js');
+
+global.Stan.prepare_runtime();
+
 var path = require('path');
+
+
 var commandLine;
 var cmdName = path.basename(process.argv[1]);
 try {
@@ -28,6 +34,7 @@ commandLine.setMaxListeners(100);
 
 var traceur = require('./traceur.js');
 var interpret = require('./interpreter.js');
+
 
 // The System object requires traceur, but we want it set for everything that
 // follows. The module sets global.System as a side-effect.
