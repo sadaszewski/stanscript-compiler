@@ -1,3 +1,8 @@
+/*
+(C) Stanislaw Adaszewski, 2014
+http://algoholic.eu
+*/
+
 import {Token} from '../syntax/Token';
 import {LiteralToken} from '../syntax/LiteralToken';
 import {IdentifierToken} from '../syntax/IdentifierToken';

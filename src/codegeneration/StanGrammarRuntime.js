@@ -1,3 +1,8 @@
+/*
+(C) Stanislaw Adaszewski, 2014
+http://algoholic.eu
+*/
+
 (function() {
 var op_to_special = {
     "++": "iinc",
