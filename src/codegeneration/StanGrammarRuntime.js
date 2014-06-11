@@ -41,18 +41,23 @@ var op_to_special = {
 };
 
  function prepare_runtime() {
-    console.log('prepare_runtime()');
+    //console.log('prepare_runtime()');
     for (var k in op_to_special) {
         var v = op_to_special[k];
         var stat = 'Object.prototype["__' + v + '__"] = function(a) { return ';
-        if (v == 'assign') {
+        if (v == 'iinc') {
+            stat += 'this.__assign(this.__add__(1)); };';
+        } else if (v == 'idec') {
+            stat += 'this.__assign(this.__sub__(1)); };';
+        } else if (v == 'assign') {
             stat += 'a; };'
         } else if (v == 'ternary') {
             stat = 'Object.prototype["__' + v + '__"] = function(a, b) { return this.valueOf() ? a : b; };';
         } else if (v == 'not' || v == 'invert') {
             stat += k + 'this.valueOf(); };';
         } else if (v[0] == 'i') {
-            stat += 'this.__' + v.substr(1) + '__(a); };';
+            var sub = v.substr(1);
+            stat += 'this.__assign__(this.__' + sub + '__(a)); };';
         } else {
             stat += 'this.valueOf() ' + k + ' a; };';
         }

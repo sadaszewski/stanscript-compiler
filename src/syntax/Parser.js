@@ -1085,7 +1085,7 @@ export class Parser {
         if (!parseOptions.blockBinding)
           debugger;
       case BACK_SLASH:
-        type = 'var';
+        //type = 'var';
       case VAR:
         this.nextToken_();
         break;
@@ -2807,9 +2807,9 @@ export class Parser {
       var left = this.parseUnaryExpression_();
       var cnt = 0;
       while (this.peekRangeOperator_(this.peekType_())) {
-        console.log("Here");
+        //console.log("Here");
         var operator = this.nextToken_();
-        console.log(operator);
+        //console.log(operator);
         operator.type = '\\';
         var right = this.parseUnaryExpression_();
         left = this.newBinaryOperator_(start, left, operator, right);
@@ -2853,7 +2853,7 @@ export class Parser {
     if (this.peekUnaryOperator_(this.peekType_())) {
       var operator = this.nextToken_();
       if (operator.type == '\\') {
-        console.log("HEre!!!");
+        //console.log("HEre!!!");
         if (this.peek_('.')) {
           var operand = this.parseMemberExpression_();
           return new UnaryExpression(this.getTreeLocation_(start), operator, operand);

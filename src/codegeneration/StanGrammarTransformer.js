@@ -1,7 +1,7 @@
-import {Token} from '../syntax/Token'
-import {LiteralToken} from '../syntax/LiteralToken'
-import {IdentifierToken} from '../syntax/IdentifierToken'
-import {STRING, NUMBER, IN} from '../syntax/TokenType'
+import {Token} from '../syntax/Token';
+import {LiteralToken} from '../syntax/LiteralToken';
+import {IdentifierToken} from '../syntax/IdentifierToken';
+import {STRING, NUMBER, IN} from '../syntax/TokenType';
 import {NewExpression,
     IdentifierExpression,
     LiteralExpression,
@@ -12,14 +12,58 @@ import {NewExpression,
     ParenExpression,
     ConditionalExpression,
     ArrowFunctionExpression,
-    FormalParameterList} from '../syntax/trees/ParseTrees'
-import {ParseTreeTransformer} from './ParseTreeTransformer'
+    FormalParameterList,
+    VariableDeclarationList,
+    ReturnStatement,
+    FunctionBody} from '../syntax/trees/ParseTrees';
+import {ParseTreeTransformer} from './ParseTreeTransformer';
+import {RETURN_STATEMENT, EXPRESSION_STATEMENT, PAREN_EXPRESSION} from '../syntax/trees/ParseTreeType';
 
 import './StanGrammarRuntime';
 
 var op_to_special = global.Stan.op_to_special;
 
 export class StanGrammarTransformer extends ParseTreeTransformer {
+    constructor(a, b) {
+        super(a, b);
+
+        this.varStack = [];
+        this.varMap = {};
+    }
+
+    isStanVar(name) {
+        return (this.varMap[name] > 0);
+    }
+
+    transformFunctionBody(tree) {
+        //console.log('transformFunctionBody()');
+        this.varStack.push([]);
+
+        // var ret = super(tree);
+
+        var statements = tree.statements;
+        for (var i = 0; i < statements.length; i++) {
+            statements[i] = this.transformAny(statements[i]);
+            //console.log(statements[i].expression)
+            if (i == statements.length - 1 && statements[i].expression && statements[i].type == EXPRESSION_STATEMENT && statements[i].expression.type == PAREN_EXPRESSION) {
+                statements[i] = new ReturnStatement(null, statements[i].expression);
+            }
+        }
+        var ret = new FunctionBody(null, statements);
+
+        var remove = this.varStack.pop();
+        for (var i = 0; i < remove.length; i++) {
+            var name = remove[i];
+            //console.log(name);
+            var n = --this.varMap[name];
+            if (n == 0) {
+                delete this.varMap[name];
+            }
+        }
+
+        return ret;
+    }
+
     /* transformBinaryOverload(tree) {
         var spec = '__' + op_to_special[tree.operator.type] + '__';
         return new ConditionalExpression(null,
@@ -28,6 +72,23 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
                 new Token(IN, 2),
                 ))
     } */
+
+    transformVariableDeclarationList(tree) {
+      //console.log('transformVariableDeclarationList()');
+      //console.log(tree);
+      if (tree.declarationType == '\\') {
+        var decl = tree.declarations;
+        for (var i = 0; i < decl.length; i++) {
+            var name = decl[i].lvalue.identifierToken.value;
+            this.varMap[name] = (this.varMap[name] || 0) + 1;
+            this.varStack[this.varStack.length-1].push(name);
+        }
+        return new VariableDeclarationList(
+            tree.location, 'var', this.transformList(tree.declarations));
+      } else {
+        return super(tree);
+      }
+    }
 
     transformBinaryOperator(tree) {
         // console.log(tree.operator.type);
@@ -41,19 +102,78 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
             throw Error('Undefined special method for operator ' + type);
         }
 
-        //console.log(tree);
-        var args = new ArgumentList(null, [tree.right]);
+        //console.log(tree.left);
+        var args = new ArgumentList(null, [tree.left, tree.right]);
         //console.log(args);
         //var params = new
         //var arrow = new ArrowFunctionExpression(null, null, params, body);
         //var arrow = '((a, b) => { if (\'' + spec + '\' in a) a.' + spec + '(b); else a ' + type = ' b; })';
-        return new CallExpression(null, new MemberExpression(null, new ParenExpression(null, tree.left), spec) , args);
+        //return new CallExpression(null, new IdentifierExpression(null, new IdentifierToken(null, spec)), args);
+        var left = this.transformAny(tree.left);
+        if (left.identifierToken) {
+            //console.log("identifier!");
+            var name = left.identifierToken.value;
+            //console.log(name);
+            if (this.isStanVar(name)) {
+                //console.log("is Stan variable!");
+                var spec = '__' + op_to_special[type] + '__';
+                var args = new ArgumentList(null, [this.transformAny(tree.right)]);
+                var ret = new CallExpression(null, new MemberExpression(null, left, spec), args);
+                ret.isStan = true;
+                return ret;
+            }
+        } else if (left.isStan) {
+            var spec = '__' + op_to_special[type] + '__';
+            var args = new ArgumentList(null, [this.transformAny(tree.right)]);
+            var ret = new CallExpression(null, new MemberExpression(null, new ParenExpression(null, left), spec), args);
+            ret.isStan = true;
+            return ret;
+        }
 
+        var ret = super(tree);
+        ret.isStan = tree.left.isStan;
+        return ret;
+    }
+
+    transformMemberLookupExpression(tree) {
+        var left = this.transformAny(tree.operand);
+        if (left.isStan || (left.identifierToken && this.isStanVar(left.identifierToken.value))) {
+            var expr = this.transformAny(tree.memberExpression);
+            var ret = new CallExpression(null, new MemberExpression(null, new ParenExpression(left), '__index__'), new ArgumentList(null, [expr]));
+            ret.isStan = true;
+            return ret;
+        } else {
+            return super(tree);
+        }
+    }
+
+    transformConditionalExpression(tree) {
+        var condition = this.transformAny(tree.condition);
+        if (condition.isStan || (condition.identifierToken && this.isStanVar(condition.identifierToken.value))) {
+          var left = this.transformAny(tree.left);
+          var right = this.transformAny(tree.right);
+          var ret = new CallExpression(null, new MemberExpression(null, new ParenExpression(null, condition), '__ternary__'), new ArgumentList(null, [left, right]));
+          ret.isStan = true;
+          return ret;
+        } else {
+          return super(tree);
+        }
+    }
+
+    transformMemberExpression(tree) {
+      var operand = this.transformAny(tree.operand);
+      if (operand.isStan || (operand.identifierToken && this.isStanVar(operand.identifierToken.value))) {
+        //console.log(tree.memberName);
+        var ret = new CallExpression(null, new MemberExpression(null, new ParenExpression(null, operand), '__attr__'), new ArgumentList(null, [new LiteralExpression(null, new LiteralToken(STRING, '\'' + tree.memberName.value + '\''))]));
+        ret.isStan = true;
+        return ret;
+      } else {
         return super(tree);
+      }
     }
 
     transformChainingOperator(tree) {
-        console.log('transformChainingOperator()');
+        //console.log('transformChainingOperator()');
         var left = this.transformAny(tree.left);
         var right = this.transformAny(tree.right);
         if ('args' in right) {
@@ -84,11 +204,15 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
     transformUnaryExpression(tree) {
         if (tree.operator.type == '\\') {
             if ('args' in tree.operand) {
-                return new NewExpression(null, tree.operand.operand, tree.operand.args);
+                var ret = new NewExpression(null, tree.operand.operand, tree.operand.args);
+                ret.isStan = true;
+                return ret;
             } else if ('memberName' in tree.operand) {
-                return new MemberExpression(null, new ThisExpression(null), tree.operand.memberName );
+                var ret = new MemberExpression(null, new ThisExpression(null), tree.operand.memberName );
+                ret.isStan = true;
+                return ret;
             } else {
-                console.log(tree);
+                // console.log(tree);
                 throw Error("Incorrect usage of backslash unary operator");
             }
         }
@@ -101,12 +225,16 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
     transformPostfixExpression(tree) {
         var type = tree.operator.type;
         var args = new ArgumentList(null, []);
-        // return new CallExpression(null, new MemberExpression(null, tree.operand, '__' + op_to_special[type] + '__'), args)
-        return super(tree);
+        var operand = this.transformAny(tree.operand);
+        if (operand.isStan || (operand.identifierToken && this.isStanVar(operand.identifierToken.value))) {
+            return new CallExpression(null, new MemberExpression(null, operand, '__' + op_to_special[type] + '__'), args)
+        } else {
+            return super(tree);
+        }
     }
 
     transformAssignmentExpression(tree) {
-        console.log("Here!!!!!");
+        //console.log("Here!!!!!");
         return super(tree);
     }
 }
