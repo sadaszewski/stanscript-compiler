@@ -144,7 +144,7 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
         var left = this.transformAny(tree.operand);
         if (left.isStan || (left.identifierToken && this.isStanVar(left.identifierToken.value))) {
             var expr = this.transformAny(tree.memberExpression);
-            var ret = new CallExpression(null, new MemberExpression(null, new ParenExpression(left), '__index__'), new ArgumentList(null, [expr]));
+            var ret = new CallExpression(null, new MemberExpression(null, new ParenExpression(null, left), '__index__'), new ArgumentList(null, [expr]));
             ret.isStan = true;
             return ret;
         } else {

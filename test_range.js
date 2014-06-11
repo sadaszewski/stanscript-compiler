@@ -1,3 +1,22 @@
+function *gen() {
+    yield 1;
+    yield 2;
+    yield 3;
+}
+
+function map(fn, g) {
+  if ('buffer' in g && g.buffer instanceof ArrayBuffer) {
+  } else if (g instanceof Array) {
+  } else if (typeof(g) == 'function') {
+    var v;
+    while ((v = g.next().value) !== undefined) {
+      out.push(fn(v));
+    }
+  } else {
+    throw "Unsupported iterable."
+  }
+}
+
 function main() {
     var x = 0\2\10;
     var y = \Vector3(1, 2, 3);
