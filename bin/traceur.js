@@ -12363,7 +12363,6 @@ System.register("traceur@0.0.44/src/syntax/Parser", [], function() {
         case CONST:
         case LET:
         case VAR:
-        case BACK_SLASH:
           exportTree = this.parseVariableStatement_();
           break;
         case FUNCTION:
@@ -12524,7 +12523,6 @@ System.register("traceur@0.0.44/src/syntax/Parser", [], function() {
           if (!parseOptions.blockBinding)
             break;
         case VAR:
-        case BACK_SLASH:
           return this.parseVariableStatement_();
         case IF:
           return this.parseIfStatement_();
@@ -13541,7 +13539,9 @@ System.register("traceur@0.0.44/src/syntax/Parser", [], function() {
           left = this.toParenExpression_(left);
         if (!allowCoverGrammar)
           this.ensureAssignmenExpression_();
-        if (!left.isLeftHandSideExpression() && !left.isPattern()) {
+        if (left.operator && left.operator.type == '\\') {
+          console.log("Here");
+        } else if (!left.isLeftHandSideExpression() && !left.isPattern()) {
           this.reportError_('Left hand side of assignment must be new, call, member, function, primary expressions or destructuring pattern');
         }
         var operator = this.nextToken_();
@@ -13802,7 +13802,10 @@ System.register("traceur@0.0.44/src/syntax/Parser", [], function() {
       if (this.peekUnaryOperator_(this.peekType_())) {
         var operator = this.nextToken_();
         if (operator.type == '\\') {
-          if (this.peek_('.')) {
+          if (this.peek_('[')) {
+            var operand = this.parseMemberLookupExpression_();
+            return new UnaryExpression(tree.getTreeLocation_(start), operator, operand);
+          } else if (this.peek_('.')) {
             var operand = this.parseMemberExpression_();
             return new UnaryExpression(this.getTreeLocation_(start), operator, operand);
           } else if (this.peek_('\\')) {
@@ -21092,7 +21095,9 @@ System.register("traceur@0.0.44/src/codegeneration/StanGrammarTransformer", [], 
       FormalParameterList = $__330.FormalParameterList,
       VariableDeclarationList = $__330.VariableDeclarationList,
       ReturnStatement = $__330.ReturnStatement,
-      FunctionBody = $__330.FunctionBody;
+      FunctionBody = $__330.FunctionBody,
+      VariableDeclaration = $__330.VariableDeclaration,
+      ExpressionStatement = $__330.ExpressionStatement;
   var ParseTreeTransformer = $traceurRuntime.assertObject(System.get("traceur@0.0.44/src/codegeneration/ParseTreeTransformer")).ParseTreeTransformer;
   var $__330 = $traceurRuntime.assertObject(System.get("traceur@0.0.44/src/syntax/trees/ParseTreeType")),
       RETURN_STATEMENT = $__330.RETURN_STATEMENT,
@@ -21130,13 +21135,16 @@ System.register("traceur@0.0.44/src/codegeneration/StanGrammarTransformer", [], 
       }
       return ret;
     },
+    addStanVar: function(name) {
+      this.varMap[name] = (this.varMap[name] || 0) + 1;
+      this.varStack[this.varStack.length - 1].push(name);
+    },
     transformVariableDeclarationList: function(tree) {
       if (tree.declarationType == '\\') {
         var decl = tree.declarations;
         for (var i = 0; i < decl.length; i++) {
           var name = decl[i].lvalue.identifierToken.value;
-          this.varMap[name] = (this.varMap[name] || 0) + 1;
-          this.varStack[this.varStack.length - 1].push(name);
+          this.addStanVar(name);
         }
         return new VariableDeclarationList(tree.location, 'var', this.transformList(tree.declarations));
       } else {
@@ -21259,6 +21267,44 @@ System.register("traceur@0.0.44/src/codegeneration/StanGrammarTransformer", [], 
       } else {
         return $traceurRuntime.superCall(this, $StanGrammarTransformer.prototype, "transformPostfixExpression", [tree]);
       }
+    },
+    transformExpressionStatement: function(tree) {
+      console.log(tree.expression);
+      if (tree.expression.expressions) {
+        var exps = tree.expression.expressions;
+        var left = exps[0].left || exps[0];
+        if (left && left.operator && left.operator.type == '\\' && left.operand.identifierToken) {
+          console.log('Here!!!');
+          var decl = [];
+          for (var i = 0; i < exps.length; i++) {
+            if (exps[i].right && exps[i].operator.type != '=') {
+              throw Error('Illegal Stan variable initialization');
+            }
+            var lvalue = (i == 0) ? exps[i].left.operand : (exps[i].left || exps[i]);
+            if (!lvalue.identifierToken) {
+              throw Error('Illegal Stan variable declaration');
+            }
+            this.addStanVar(lvalue.identifierToken.value);
+            var initializer = exps[i].right ? this.transformAny(exps[i].right) : null;
+            decl.push(new VariableDeclaration(null, lvalue, null, initializer));
+          }
+          return new ExpressionStatement(null, new VariableDeclarationList(null, 'var', decl));
+        }
+      } else {
+        var exp = tree.expression;
+        var left = exp.left || exp;
+        if (left && left.operator && left.operator.type == '\\' && left.operand.identifierToken) {
+          if (exp.right && exp.operator.type != '=') {
+            throw Error('Illegal Stan variable initialization');
+          }
+          var lvalue = left.operand;
+          this.addStanVar(lvalue.identifierToken.value);
+          var initializer = exp.right ? this.transformAny(exp.right) : null;
+          var decl = new VariableDeclaration(null, lvalue, null, initializer);
+          return new ExpressionStatement(null, new VariableDeclarationList(null, 'var', [decl]));
+        }
+      }
+      return $traceurRuntime.superCall(this, $StanGrammarTransformer.prototype, "transformExpressionStatement", [tree]);
     },
     transformAssignmentExpression: function(tree) {
       return $traceurRuntime.superCall(this, $StanGrammarTransformer.prototype, "transformAssignmentExpression", [tree]);

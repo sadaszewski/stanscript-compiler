@@ -549,7 +549,7 @@ export class Parser {
       case CONST:
       case LET:
       case VAR:
-      case BACK_SLASH:
+      //case BACK_SLASH:
         exportTree = this.parseVariableStatement_();
         break;
       case FUNCTION:
@@ -779,7 +779,9 @@ export class Parser {
           break;
         // Fall through.
       case VAR:
-      case BACK_SLASH:
+      // case BACK_SLASH:
+        // if (this.peek_('.') || this.peek_('['))
+        // return this.parseUnaryExpression_();
         return this.parseVariableStatement_();
       case IF:
         return this.parseIfStatement_();
@@ -2448,7 +2450,9 @@ export class Parser {
       if (!allowCoverGrammar)
         this.ensureAssignmenExpression_();
 
-      if (!left.isLeftHandSideExpression() && !left.isPattern()) {
+      if (left.operator && left.operator.type == '\\') {
+        console.log("Here");
+      } else if (!left.isLeftHandSideExpression() && !left.isPattern()) {
         this.reportError_('Left hand side of assignment must be new, call, member, function, primary expressions or destructuring pattern');
       }
 
@@ -2854,7 +2858,10 @@ export class Parser {
       var operator = this.nextToken_();
       if (operator.type == '\\') {
         //console.log("HEre!!!");
-        if (this.peek_('.')) {
+        if (this.peek_('[')) {
+          var operand = this.parseMemberLookupExpression_();
+          return new UnaryExpression(tree.getTreeLocation_(start), operator, operand);
+        } else if (this.peek_('.')) {
           var operand = this.parseMemberExpression_();
           return new UnaryExpression(this.getTreeLocation_(start), operator, operand);
         } else if (this.peek_('\\')) {

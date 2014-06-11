@@ -20,7 +20,9 @@ import {NewExpression,
     FormalParameterList,
     VariableDeclarationList,
     ReturnStatement,
-    FunctionBody} from '../syntax/trees/ParseTrees';
+    FunctionBody,
+    VariableDeclaration,
+    ExpressionStatement} from '../syntax/trees/ParseTrees';
 import {ParseTreeTransformer} from './ParseTreeTransformer';
 import {RETURN_STATEMENT, EXPRESSION_STATEMENT, PAREN_EXPRESSION} from '../syntax/trees/ParseTreeType';
 
@@ -78,6 +80,11 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
                 ))
     } */
 
+    addStanVar(name) {
+      this.varMap[name] = (this.varMap[name] || 0) + 1;
+      this.varStack[this.varStack.length-1].push(name);
+    }
+
     transformVariableDeclarationList(tree) {
       //console.log('transformVariableDeclarationList()');
       //console.log(tree);
@@ -85,8 +92,7 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
         var decl = tree.declarations;
         for (var i = 0; i < decl.length; i++) {
             var name = decl[i].lvalue.identifierToken.value;
-            this.varMap[name] = (this.varMap[name] || 0) + 1;
-            this.varStack[this.varStack.length-1].push(name);
+            this.addStanVar(name);
         }
         return new VariableDeclarationList(
             tree.location, 'var', this.transformList(tree.declarations));
@@ -217,7 +223,7 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
                 ret.isStan = true;
                 return ret;
             } else {
-                // console.log(tree);
+                //console.log(tree);
                 throw Error("Incorrect usage of backslash unary operator");
             }
         }
@@ -236,6 +242,53 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
         } else {
             return super(tree);
         }
+    }
+
+    transformExpressionStatement(tree) {
+        console.log(tree.expression);
+        if (tree.expression.expressions) {
+          var exps = tree.expression.expressions;
+          var left = exps[0].left || exps[0];
+
+          if (left && left.operator && left.operator.type == '\\' && left.operand.identifierToken) {
+            console.log('Here!!!');
+            var decl = [];
+            for (var i = 0; i < exps.length; i++) {
+              if (exps[i].right && exps[i].operator.type != '=') {
+                throw Error('Illegal Stan variable initialization');
+              }
+              var lvalue = (i == 0) ? exps[i].left.operand : (exps[i].left || exps[i]);
+              if (!lvalue.identifierToken) {
+                throw Error('Illegal Stan variable declaration');
+              }
+              this.addStanVar(lvalue.identifierToken.value);
+              var initializer = exps[i].right ? this.transformAny(exps[i].right) : null;
+              decl.push(new VariableDeclaration(null, lvalue, null, initializer));
+            }
+            return new ExpressionStatement(null, new VariableDeclarationList(null, 'var', decl));
+          }
+        } else {
+          var exp = tree.expression;
+          var left = exp.left || exp;
+          if (left && left.operator && left.operator.type == '\\' && left.operand.identifierToken) {
+            if (exp.right && exp.operator.type != '=') {
+              throw Error('Illegal Stan variable initialization');
+            }
+            var lvalue = left.operand;
+            this.addStanVar(lvalue.identifierToken.value);
+            var initializer = exp.right ? this.transformAny(exp.right) : null;
+            var decl = new VariableDeclaration(null, lvalue, null, initializer);
+            return new ExpressionStatement(null, new VariableDeclarationList(null, 'var', [decl]));
+          }
+        }
+        /*if (left && left.operator && left.operator.type == '\\') {
+          console.log(left);
+          if (left.operand && left.operand.identifierToken) {
+            console.log("Here!!");
+          }
+          //return new VariableDeclarationList(null, 'var', [decl]);
+        }*/
+        return super(tree);
     }
 
     transformAssignmentExpression(tree) {
