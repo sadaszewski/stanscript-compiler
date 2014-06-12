@@ -28,4 +28,4 @@ test/commonjs-compiled
 test/errsfile.json
 test/test-list.js
 test/wiki/CompilingOffline/out/*
-test_range_compiled.js
+/*_compiled.js

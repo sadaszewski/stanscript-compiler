@@ -19,6 +19,7 @@ function map(fn, g) {
 
 function main() {
     \k;
+    k[1,2,3] = 1;
     w += 1;
     var x, y, z, i;
     x = 0\2\10;

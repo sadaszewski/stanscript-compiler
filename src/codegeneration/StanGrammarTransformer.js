@@ -22,7 +22,8 @@ import {NewExpression,
     ReturnStatement,
     FunctionBody,
     VariableDeclaration,
-    ExpressionStatement} from '../syntax/trees/ParseTrees';
+    ExpressionStatement,
+    ArrayLiteralExpression} from '../syntax/trees/ParseTrees';
 import {ParseTreeTransformer} from './ParseTreeTransformer';
 import {RETURN_STATEMENT, EXPRESSION_STATEMENT, PAREN_EXPRESSION} from '../syntax/trees/ParseTreeType';
 
@@ -150,6 +151,9 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
         var left = this.transformAny(tree.operand);
         if (left.isStan || (left.identifierToken && this.isStanVar(left.identifierToken.value))) {
             var expr = this.transformAny(tree.memberExpression);
+            if (expr.expressions) {
+                expr = new ArrayLiteralExpression(null, expr.expressions);
+            }
             var ret = new CallExpression(null, new MemberExpression(null, new ParenExpression(null, left), '__index__'), new ArgumentList(null, [expr]));
             ret.isStan = true;
             return ret;
@@ -293,6 +297,10 @@ export class StanGrammarTransformer extends ParseTreeTransformer {
 
     transformAssignmentExpression(tree) {
         //console.log("Here!!!!!");
+        return super(tree);
+    }
+
+    transformFormalParameter(tree) {
         return super(tree);
     }
 }

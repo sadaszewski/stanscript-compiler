@@ -21097,7 +21097,8 @@ System.register("traceur@0.0.44/src/codegeneration/StanGrammarTransformer", [], 
       ReturnStatement = $__330.ReturnStatement,
       FunctionBody = $__330.FunctionBody,
       VariableDeclaration = $__330.VariableDeclaration,
-      ExpressionStatement = $__330.ExpressionStatement;
+      ExpressionStatement = $__330.ExpressionStatement,
+      ArrayLiteralExpression = $__330.ArrayLiteralExpression;
   var ParseTreeTransformer = $traceurRuntime.assertObject(System.get("traceur@0.0.44/src/codegeneration/ParseTreeTransformer")).ParseTreeTransformer;
   var $__330 = $traceurRuntime.assertObject(System.get("traceur@0.0.44/src/syntax/trees/ParseTreeType")),
       RETURN_STATEMENT = $__330.RETURN_STATEMENT,
@@ -21187,6 +21188,9 @@ System.register("traceur@0.0.44/src/codegeneration/StanGrammarTransformer", [], 
       var left = this.transformAny(tree.operand);
       if (left.isStan || (left.identifierToken && this.isStanVar(left.identifierToken.value))) {
         var expr = this.transformAny(tree.memberExpression);
+        if (expr.expressions) {
+          expr = new ArrayLiteralExpression(null, expr.expressions);
+        }
         var ret = new CallExpression(null, new MemberExpression(null, new ParenExpression(null, left), '__index__'), new ArgumentList(null, [expr]));
         ret.isStan = true;
         return ret;
