@@ -6,7 +6,7 @@ Here's a short list of changes relative to JS:
 
 - short-hand new operator, e.g. <strong>\Vector3(1, 2, 3)</strong> is <strong>new Vector3(1, 2, 3)</strong>
 
-- short-hand 'this' notation, e.g. <strong>\.x</strong> (<strong>this.x</strong>) and <strong>\\</strong> (<strong>this</strong>)
+- short-hand 'this' notation, e.g. <strong>\\.x</strong> (<strong>this.x</strong>) and <strong>\\\\</strong> (<strong>this</strong>)
 
 - operator overloading in variables declared with \, e.g.: <strong>\x = 1; x += 1; </strong> gets transpiled to: <strong>var x = 1; x.__iadd__(1);</strong>
 
