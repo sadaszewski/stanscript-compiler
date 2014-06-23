@@ -8,13 +8,13 @@ Here's a short list of changes relative to JS:
 
 - short-hand 'this' notation, e.g. <strong>\\.x</strong> (<strong>this.x</strong>) and <strong>\\\\</strong> (<strong>this</strong>)
 
-- operator overloading in variables declared with \, e.g.: <strong>\x = 1; x += 1; </strong> gets transpiled to: <strong>var x = 1; x.__iadd__(1);</strong>
+- operator overloading in variables declared with \, e.g.: <strong>\x = 1; x += 1; </strong> gets transpiled to: <strong>var x = 1; x.\_\_iadd\_\_(1);</strong>
 
-- also member lookup (<strong>[]</strong>), member (<strong>.</strong>) and ternary (<strong>?:</strong>) operators can be overloaded using special methods __index__, __attr__ and __ternary__ respectively
+- also member lookup (<strong>[]</strong>), member (<strong>.</strong>) and ternary (<strong>?:</strong>) operators can be overloaded using special methods \_\_index\_\_, \_\_attr\_\_ and \_\_ternary\_\_ respectively
 
 - if last expression in a function is in parentheses it automatically is the return value, e.g. <strong>(x)</strong> is translated to <strong>return x;</strong>
 
-- multi-dimensional indexing in variables declared with \, e.g. <strong>\x=\ndarray([5,5]); console.log(x[1, 0:2]);</strong> is translated to <strong>var x = new ndarray([5, 5]); console.log(x.__index__([1, {'from': 0, 'to': 2, 'step': 1}]));</strong>
+- multi-dimensional indexing in variables declared with \, e.g. <strong>\x=\ndarray([5,5]); console.log(x[1, 0:2]);</strong> is translated to <strong>var x = new ndarray([5, 5]); console.log(x.\_\_index\_\_([1, {'from': 0, 'to': 2, 'step': 1}]));</strong>
 
 - chaining operator (->) for better functional compositing, e.g. <strong>a(1) -> b(2, 3) -> c();</strong> gets transpiled to <strong>c(b(2, 3, a(1));</strong>
 
